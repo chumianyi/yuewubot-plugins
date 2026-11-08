@@ -1,0 +1,80 @@
+{
+  "name": "网易云点歌",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "网易云音乐搜索与点歌，纯 aiohttp 直连官方接口，无需额外服务，支持封面、播放直链与音乐卡片",
+  "homepage": "https://github.com/xiaoyunsha/astrbot_plugin_netease_music",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/netease_music",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup",
+    "on_shutdown": "on_shutdown",
+    "on_message": "on_message"
+  },
+  "triggers": {
+    "on_message": [
+      "网易搜歌",
+      "网易点歌",
+      "网易搜索",
+      "网易播放"
+    ]
+  },
+  "commands": [
+    {
+      "name": "网易搜歌",
+      "aliases": [
+        "网易搜索",
+        "wysg"
+      ],
+      "description": "搜索网易云音乐歌曲",
+      "usage": "/网易搜歌 关键词",
+      "handler": "cmd_search"
+    },
+    {
+      "name": "网易点歌",
+      "aliases": [
+        "网易播放",
+        "wydg"
+      ],
+      "description": "点播搜索结果中的歌曲",
+      "usage": "/网易点歌 序号",
+      "handler": "cmd_play"
+    },
+    {
+      "name": "网易点歌帮助",
+      "aliases": [
+        "网易帮助"
+      ],
+      "description": "查看点歌用法",
+      "usage": "/网易点歌帮助",
+      "handler": "cmd_help"
+    }
+  ],
+  "config": {
+    "cookie": {
+      "type": "string",
+      "label": "网易云 Cookie（可留空，填会员 Cookie 可点 VIP 完整版）",
+      "default": ""
+    },
+    "search_limit": {
+      "type": "number",
+      "label": "搜索结果数量",
+      "default": 10
+    },
+    "cache_timeout": {
+      "type": "number",
+      "label": "搜索缓存时间（秒）",
+      "default": 300
+    },
+    "bitrate": {
+      "type": "number",
+      "label": "音质比特率（320000 / 192000 / 128000）",
+      "default": 320000
+    },
+    "music_card": {
+      "type": "bool",
+      "label": "发送音乐卡片（关闭后只发图文）",
+      "default": true
+    }
+  }
+}
