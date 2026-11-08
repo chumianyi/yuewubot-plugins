@@ -1,0 +1,74 @@
+{
+  "name": "专业模式",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "发送 /专家 内容，用独立配置的接口原样提问，不套人设与提示词，回复不限长度",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/expert",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup"
+  },
+  "commands": [
+    {
+      "name": "专家",
+      "aliases": [
+        "专家模式",
+        "expert"
+      ],
+      "description": "无提示词直接问答（独立接口，不限长度）",
+      "usage": "/专家 你的问题",
+      "handler": "cmd_expert"
+    }
+  ],
+  "config": {
+    "api_base": {
+      "type": "string",
+      "label": "接口地址（如 https://api.deepseek.com/v1）",
+      "default": "",
+      "placeholder": "https://api.deepseek.com/v1"
+    },
+    "api_key": {
+      "type": "string",
+      "label": "API Key",
+      "default": "",
+      "placeholder": "sk-..."
+    },
+    "model": {
+      "type": "string",
+      "label": "模型名",
+      "default": "",
+      "placeholder": "deepseek-chat"
+    },
+    "protocol": {
+      "type": "string",
+      "label": "接口协议（openai 或 anthropic）",
+      "default": "openai"
+    },
+    "max_tokens": {
+      "type": "number",
+      "label": "最大输出 token（0 为不限制，交给服务端）",
+      "default": 0
+    },
+    "temperature": {
+      "type": "number",
+      "label": "温度（0-2）",
+      "default": 0.7
+    },
+    "timeout": {
+      "type": "number",
+      "label": "超时秒数",
+      "default": 180
+    },
+    "cooldown": {
+      "type": "number",
+      "label": "同一用户冷却秒数（0 为不限）",
+      "default": 5
+    },
+    "admin_only": {
+      "type": "boolean",
+      "label": "仅管理员可用",
+      "default": false
+    }
+  }
+}
