@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 """视频解析器 · YueWuBot 原生插件
 
-把 B站 / 抖音 / 小红书 / 快手 的分享链接解析成「标题 + 视频直链 + 封面」，
+把 B站 / 抖音 的分享链接解析成「标题 + 视频直链 + 封面」，
 不下载、不落盘，解析完直接回复。
 
 参考了 astrbot_plugin_video_analysis 的解析思路与公开接口：
 - B站：finger/spi 取 buvid 降低风控 -> view 取标题封面 -> playurl 取直链
 - 抖音：短链重定向取 aweme_id -> slidesinfo 接口 -> 分享页 _ROUTER_DATA 兜底
-- 小红书：短链重定向 -> 笔记页 __INITIAL_STATE__ -> originVideoKey / stream
-- 快手：短链重定向 -> 作品页 __APOLLO_STATE__ -> photoUrl
 """
 
 import asyncio
@@ -22,8 +20,6 @@ UA_PC = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
          "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
 UA_MB = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 "
          "(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
-UA_ANDROID = ("Mozilla/5.0 (Linux; Android 14; Pixel 8 Pro) AppleWebKit/537.36 "
-              "(KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36")
 
 TIMEOUT = aiohttp.ClientTimeout(total=15, connect=6)
 
@@ -40,27 +36,12 @@ H_DY_MB = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 H_DY_PC = dict(H_DY_MB, **{"User-Agent": UA_PC})
-H_XHS = {
-    "User-Agent": UA_PC,
-    "Referer": "https://www.xiaohongshu.com/",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-}
-H_KS = {
-    "User-Agent": UA_PC,
-    "Referer": "https://www.kuaishou.com/",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-}
-
 URL_RE = re.compile(r"https?://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+")
 URL_TRIM = " \t\r\n.,;:!?)]}>'\"。，；：！？）】》」』、"
 
 PLATFORMS = {
     "bilibili": "B站",
     "douyin": "抖音",
-    "xiaohongshu": "小红书",
-    "kuaishou": "快手",
 }
 
 _LAST = {}
@@ -103,10 +84,6 @@ def _platform_of(url):
         return "bilibili"
     if "douyin.com" in host or "iesdouyin.com" in host or "amemv.com" in host:
         return "douyin"
-    if "xiaohongshu.com" in host or "xhslink.com" in host or "xhslink.cn" in host:
-        return "xiaohongshu"
-    if "kuaishou.com" in host or "gifshow.com" in host or "kuaishouapp.com" in host:
-        return "kuaishou"
     return ""
 
 
@@ -407,14 +384,43 @@ def _aweme_item(aw):
     return None
 
 
+def _aweme_from_html(html, aid=""):
+    """从分享页 HTML 里抠作品数据，SSR 数据缺失时返回 None"""
+    if not html:
+        return None
+    for marker in ("window._ROUTER_DATA", "window.__INITIAL_STATE__"):
+        data = _json_block(html, marker)
+        if not data:
+            continue
+        aweme = _find_aweme(data)
+        if aweme:
+            item = _aweme_item(aweme)
+            if item:
+                return item
+    m = re.search(r'<script[^>]+id="RENDER_DATA"[^>]*>(.*?)</script>', html, re.S)
+    if m:
+        try:
+            from urllib.parse import unquote
+            data = json.loads(unquote(m.group(1)))
+            aweme = _find_aweme(data)
+            if aweme:
+                item = _aweme_item(aweme)
+                if item:
+                    return item
+        except Exception:
+            pass
+    return None
+
+
 async def parse_douyin(session, url, cfg):
     real = url
     if re.search(r"v\.douyin\.com|iesdouyin\.com/share", url):
         real = await _follow(session, url, H_DY_MB)
 
     if re.search(r"webcast|live\.douyin", real or ""):
-        return {"platform": "抖音", "title": "直播间", "url": real, "cover": "",
-                "page": real, "note": "直播间不支持解析，点链接直接看"}
+        # 直播回跳后的地址带一长串参数，直接用用户发的原始短链更干净
+        return {"platform": "抖音", "title": "直播间", "url": url, "cover": "",
+                "page": "", "note": "直播间不支持解析，点链接直接看"}
 
     aid = ""
     for pattern in (r"/(?:video|note|slides)/(\d{15,25})",
@@ -432,224 +438,34 @@ async def parse_douyin(session, url, cfg):
     # 1) 结构化接口（无需签名，命中率最高）
     api = ("https://www.iesdouyin.com/web/api/v2/aweme/slidesinfo/"
            "?aweme_ids=%5B" + aid + "%5D&request_source=200")
-    data = await _get_json(session, api, H_DY_MB, cookie)
-    if data:
-        aweme = _find_aweme(data)
-        if aweme:
-            item = _aweme_item(aweme)
-            if item:
-                return item
-
-    # 2) 分享页 SSR 数据
-    for page_url, headers in (
-        ("https://www.iesdouyin.com/share/video/%s/" % aid, H_DY_MB),
-        ("https://www.douyin.com/video/%s" % aid, H_DY_PC),
-    ):
-        html = await _get_text(session, page_url, headers, cookie)
-        if not html:
-            continue
-        for marker in ("window._ROUTER_DATA", "window.__INITIAL_STATE__"):
-            data = _json_block(html, marker)
-            if not data:
-                continue
+    for attempt in (1, 2):
+        data = await _get_json(session, api, H_DY_MB, cookie)
+        if data:
             aweme = _find_aweme(data)
             if aweme:
                 item = _aweme_item(aweme)
                 if item:
                     return item
-        m = re.search(r'<script[^>]+id="RENDER_DATA"[^>]*>(.*?)</script>', html, re.S)
-        if m:
-            try:
-                from urllib.parse import unquote
-                data = json.loads(unquote(m.group(1)))
-                aweme = _find_aweme(data)
-                if aweme:
-                    item = _aweme_item(aweme)
-                    if item:
-                        return item
-            except Exception:
-                pass
+        if attempt == 1:
+            # 抖音对连续请求有瞬时风控，隔一下再问一次
+            await asyncio.sleep(0.6)
+
+    # 2) 分享页 SSR 数据：页面偶发不下发作品数据，换入口多试几轮
+    pages = (
+        ("https://www.iesdouyin.com/share/video/%s/" % aid, H_DY_MB),
+        ("https://m.douyin.com/share/video/%s" % aid, H_DY_MB),
+        ("https://www.douyin.com/video/%s" % aid, H_DY_PC),
+    )
+    for rnd in range(2):
+        for page_url, headers in pages:
+            item = _aweme_from_html(await _get_text(session, page_url, headers, cookie), aid)
+            if item:
+                return item
+        if rnd == 0:
+            await asyncio.sleep(0.5)
 
     return {"platform": "抖音", "title": "", "url": "", "cover": "",
             "page": "https://www.douyin.com/video/" + aid, "note": ""}
-
-
-# ---------------------------------------------------------------- 小红书
-
-def _xhs_note(state, note_id):
-    if not isinstance(state, dict):
-        return None
-    note = None
-    try:
-        note = state["note"]["noteDetailMap"][note_id]["note"]
-    except Exception:
-        note = None
-    if not note:
-        detail = (state.get("noteData") or {}).get("data") or {}
-        note = detail.get("noteData")
-    if not note:
-        mapping = (state.get("note") or {}).get("noteDetailMap") or {}
-        for entry in mapping.values():
-            if isinstance(entry, dict) and isinstance(entry.get("note"), dict):
-                note = entry["note"]
-                break
-    return note if isinstance(note, dict) else None
-
-
-def _xhs_stream_url(stream):
-    tracks = []
-    for codec in ("h264", "h265", "av1", "h266"):
-        seq = stream.get(codec)
-        if isinstance(seq, list):
-            tracks.extend([x for x in seq if isinstance(x, dict)])
-    if not tracks:
-        return ""
-    tracks.sort(key=lambda x: x.get("height") or x.get("width") or 0, reverse=True)
-    for track in tracks:
-        for key in ("masterUrl", "master_url"):
-            if track.get(key):
-                return _https(track[key])
-        for u in (track.get("backupUrls") or []):
-            if u:
-                return _https(u)
-    return ""
-
-
-def _xhs_item(note):
-    title = note.get("title") or ""
-    desc = note.get("desc") or ""
-    if not title:
-        title = (desc.split("\n")[0] if desc else "")
-    video = note.get("video") or {}
-    url = ""
-
-    consumer = video.get("consumer") or {}
-    origin_key = consumer.get("originVideoKey") or ""
-    if origin_key:
-        url = "https://sns-video-bd.xhscdn.com/" + str(origin_key).lstrip("/")
-
-    if not url:
-        url = _xhs_stream_url(((video.get("media") or {}).get("stream") or {}))
-    if not url:
-        url = _xhs_stream_url(video.get("stream") or {})
-
-    images = note.get("imageList") or []
-    cover = ""
-    for img in images:
-        if not isinstance(img, dict):
-            continue
-        cover = _https(img.get("urlDefault") or img.get("url") or "")
-        if cover:
-            break
-
-    note_text = ""
-    if not url and images:
-        # 图文笔记：把第一张图当链接，注明张数
-        url = ""
-        note_text = "图文笔记共 %d 张" % len(images)
-
-    return {
-        "platform": "小红书",
-        "title": title,
-        "url": url,
-        "page": "",
-        "cover": cover,
-        "note": note_text,
-        "images": [_https((img.get("urlDefault") or img.get("url") or ""))
-                   for img in images if isinstance(img, dict)],
-    }
-
-
-async def parse_xhs(session, url, cfg):
-    real = url
-    if "xhslink" in url:
-        real = await _follow(session, url, H_DY_MB)
-
-    note_id = ""
-    for pattern in (r"/(?:explore|discovery/item|item)/([0-9a-fA-F]{24})",
-                    r"[?&]noteId=([0-9a-fA-F]{24})"):
-        m = re.search(pattern, real or url)
-        if m:
-            note_id = m.group(1)
-            break
-    if not note_id:
-        return None
-
-    page = real if "xiaohongshu.com" in (real or "") else \
-        "https://www.xiaohongshu.com/explore/" + note_id
-    cookie = (cfg.get("xhs_cookie") or "").strip()
-    html = await _get_text(session, page, H_XHS, cookie)
-    if not html:
-        return {"platform": "小红书", "title": "", "url": "", "cover": "", "page": page,
-                "note": ""}
-
-    state = _json_block(html, "window.__INITIAL_STATE__")
-    note = _xhs_note(state, note_id) if state else None
-    if not note:
-        return {"platform": "小红书", "title": "", "url": "", "cover": "", "page": page,
-                "note": ""}
-
-    item = _xhs_item(note)
-    item["page"] = page
-    return item
-
-
-# ---------------------------------------------------------------- 快手
-
-def _ks_item(html):
-    data = _json_block(html, "window.__APOLLO_STATE__") or \
-        _json_block(html, "window.__INITIAL_STATE__")
-    if not data:
-        return None
-
-    def hit(obj):
-        return bool(obj.get("photoUrl") and (obj.get("caption") or obj.get("photoId")))
-
-    photo = _walk_find(data, hit)
-    if not photo:
-        return None
-
-    cover = ""
-    for key in ("coverUrl", "coverUrls", "webpCoverUrl"):
-        value = photo.get(key)
-        if isinstance(value, str) and value.startswith("http"):
-            cover = value
-            break
-        if isinstance(value, list) and value:
-            cover = value[0] if isinstance(value[0], str) else ""
-            if cover:
-                break
-
-    return {
-        "platform": "快手",
-        "title": photo.get("caption") or "",
-        "url": _https(photo.get("photoUrl")),
-        "page": "",
-        "cover": _https(cover),
-        "note": "",
-    }
-
-
-async def parse_kuaishou(session, url, cfg):
-    real = url
-    if re.search(r"v\.kuaishou\.com|kuaishouapp\.com", url):
-        real = await _follow(session, url, H_DY_MB)
-
-    m = re.search(r"/(?:short-video|photo|fw/photo)/([A-Za-z0-9_-]{6,48})", real or "")
-    if not m:
-        return None
-    photo_id = m.group(1)
-    page = "https://www.kuaishou.com/short-video/" + photo_id
-    html = await _get_text(session, page, H_KS)
-    if not html:
-        return {"platform": "快手", "title": "", "url": "", "cover": "", "page": page,
-                "note": ""}
-    item = _ks_item(html)
-    if not item:
-        return {"platform": "快手", "title": "", "url": "", "cover": "", "page": page,
-                "note": ""}
-    item["page"] = page
-    return item
 
 
 # ---------------------------------------------------------------- 调度与发送
@@ -657,8 +473,6 @@ async def parse_kuaishou(session, url, cfg):
 PARSERS = {
     "bilibili": parse_bilibili,
     "douyin": parse_douyin,
-    "xiaohongshu": parse_xhs,
-    "kuaishou": parse_kuaishou,
 }
 
 
@@ -672,7 +486,9 @@ async def _parse_one(session, url, cfg):
     if not parser:
         return None
     try:
-        return await parser(session, url, cfg)
+        return await asyncio.wait_for(parser(session, url, cfg), timeout=20)
+    except asyncio.TimeoutError:
+        return None
     except Exception:
         return None
 
@@ -747,7 +563,7 @@ async def _parse_and_send(ctx, urls):
 # ---------------------------------------------------------------- 钩子
 
 def on_startup(bot):
-    print("[video_parser] 视频解析器已加载（B站 / 抖音 / 小红书 / 快手）")
+    print("[video_parser] 视频解析器已加载（B站 / 抖音）")
 
 
 async def on_message(ctx):
@@ -778,10 +594,10 @@ async def cmd_parse(ctx, args):
     supported = [u for u in urls if _platform_of(u)]
 
     if not urls:
-        await ctx.reply("用法：/解析 <分享链接>\n支持 B站、抖音、小红书、快手")
+        await ctx.reply("用法：/解析 <分享链接>\n支持 B站、抖音")
         return True
     if not supported:
-        await ctx.reply("这个链接不在支持范围，目前支持 B站、抖音、小红书、快手")
+        await ctx.reply("这个链接不在支持范围，目前支持 B站、抖音")
         return True
 
     ok = await _parse_and_send(ctx, supported)

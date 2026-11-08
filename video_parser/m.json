@@ -1,8 +1,8 @@
 {
   "name": "视频解析器",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "YueWu",
-  "description": "发送 B站、抖音、小红书、快手的分享链接，自动解析并回复标题、视频直链与封面，不下载文件",
+  "description": "发 B站 / 抖音 链接就自动解析，也可用 /解析 <链接>；只回复标题、直链与封面，不下载",
   "homepage": "",
   "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/video_parser",
   "icon": "icon.png",
@@ -15,8 +15,7 @@
       "http",
       "b23.tv",
       "v.douyin.com",
-      "xhslink",
-      "kuaishou.com"
+      "douyin.com"
     ]
   },
   "commands": [
@@ -26,7 +25,7 @@
         "parse",
         "视频解析"
       ],
-      "description": "解析分享链接，返回标题、直链与封面",
+      "description": "解析 B站 / 抖音 链接，回复标题、直链与封面",
       "usage": "/解析 <链接>",
       "handler": "cmd_parse"
     },
@@ -57,16 +56,6 @@
       "label": "启用 抖音",
       "default": true
     },
-    "xiaohongshu": {
-      "type": "boolean",
-      "label": "启用 小红书",
-      "default": true
-    },
-    "kuaishou": {
-      "type": "boolean",
-      "label": "启用 快手",
-      "default": true
-    },
     "with_cover": {
       "type": "boolean",
       "label": "解析后附带封面图",
@@ -90,11 +79,6 @@
     "douyin_cookie": {
       "type": "string",
       "label": "抖音 Cookie（可选，提高成功率）",
-      "default": ""
-    },
-    "xhs_cookie": {
-      "type": "string",
-      "label": "小红书 Cookie（可选，部分笔记需要登录）",
       "default": ""
     }
   }
