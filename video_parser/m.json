@@ -1,0 +1,101 @@
+{
+  "name": "视频解析器",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "发送 B站、抖音、小红书、快手的分享链接，自动解析并回复标题、视频直链与封面，不下载文件",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/video_parser",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup",
+    "on_message": "on_message"
+  },
+  "triggers": {
+    "on_message": [
+      "http",
+      "b23.tv",
+      "v.douyin.com",
+      "xhslink",
+      "kuaishou.com"
+    ]
+  },
+  "commands": [
+    {
+      "name": "解析",
+      "aliases": [
+        "parse",
+        "视频解析"
+      ],
+      "description": "解析分享链接，返回标题、直链与封面",
+      "usage": "/解析 <链接>",
+      "handler": "cmd_parse"
+    },
+    {
+      "name": "解析状态",
+      "aliases": [
+        "解析设置",
+        "视频解析状态"
+      ],
+      "description": "查看解析器开关与配置",
+      "usage": "/解析状态",
+      "handler": "cmd_status"
+    }
+  ],
+  "config": {
+    "auto_parse": {
+      "type": "boolean",
+      "label": "自动解析群里的分享链接",
+      "default": true
+    },
+    "bilibili": {
+      "type": "boolean",
+      "label": "启用 B站",
+      "default": true
+    },
+    "douyin": {
+      "type": "boolean",
+      "label": "启用 抖音",
+      "default": true
+    },
+    "xiaohongshu": {
+      "type": "boolean",
+      "label": "启用 小红书",
+      "default": true
+    },
+    "kuaishou": {
+      "type": "boolean",
+      "label": "启用 快手",
+      "default": true
+    },
+    "with_cover": {
+      "type": "boolean",
+      "label": "解析后附带封面图",
+      "default": true
+    },
+    "max_links": {
+      "type": "number",
+      "label": "单条消息最多解析几个链接",
+      "default": 1
+    },
+    "cooldown": {
+      "type": "number",
+      "label": "同一会话解析冷却（秒）",
+      "default": 8
+    },
+    "bili_quality": {
+      "type": "number",
+      "label": "B站清晰度（16=360P 32=480P 64=720P 80=1080P）",
+      "default": 64
+    },
+    "douyin_cookie": {
+      "type": "string",
+      "label": "抖音 Cookie（可选，提高成功率）",
+      "default": ""
+    },
+    "xhs_cookie": {
+      "type": "string",
+      "label": "小红书 Cookie（可选，部分笔记需要登录）",
+      "default": ""
+    }
+  }
+}
