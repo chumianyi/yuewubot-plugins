@@ -1,6 +1,6 @@
 {
   "name": "视频解析器",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": "YueWu",
   "description": "发 B站 / 抖音 链接就自动解析，也可用 /解析 <链接>；只回复标题、直链与封面，不下载。B站支持配置登录 Cookie",
   "homepage": "",

@@ -300,6 +300,8 @@ async def parse_bilibili(session, url, cfg):
     cid = info.get("cid") or (((info.get("pages") or [{}])[0] or {}).get("cid") or 0)
     bvid = info.get("bvid") or (bv_match.group(1) if bv_match else "")
     page = "https://www.bilibili.com/video/" + bvid if bvid else (real or url)
+    player = ("https://player.bilibili.com/player.html?bvid=%s&page=1"
+              "&high_quality=1&danmaku=0" % bvid) if bvid else page
 
     try:
         qn = int(cfg.get("bili_quality") or 64)
@@ -358,6 +360,7 @@ async def parse_bilibili(session, url, cfg):
         "title": info.get("title") or "",
         "url": direct,
         "page": page,
+        "play": player,
         "cover": _https(info.get("pic") or ""),
         "note": note,
         "alt": alt,
@@ -560,11 +563,15 @@ def _format(item):
     title = _clip(item.get("title") or "", 70)
     head = "【%s】" % item["platform"]
     lines.append(head + title if title else head)
+    play = item.get("play") or ""
     url = item.get("url") or ""
     page = item.get("page") or ""
+    if play:
+        # 播放器页放最前：浏览器的直链会因防盗链 403
+        lines.append(play)
     if url:
         lines.append(url)
-    if page and page != url:
+    elif page and page != play:
         lines.append(page)
     alt = item.get("alt") or ""
     if alt:
