@@ -215,7 +215,20 @@ def _av2bv(av):
     return "BV1" + "".join(table)
 
 
-async def _bili_cookie(session):
+def _user_bili_cookie(cfg):
+    """控制台里配置的登录 Cookie，兼容换行/多余分号。"""
+    if not cfg:
+        return ""
+    raw = str(cfg.get("bili_cookie") or "")
+    raw = re.sub(r"\s*\r?\n\s*", " ", raw).strip().strip(";").strip()
+    return raw
+
+
+def bili_logged_in(cfg):
+    return "SESSDATA=" in (_user_bili_cookie(cfg) or "")
+
+
+async def _bili_fingerprint(session):
     if _BILI_COOKIE["value"] and time.time() - _BILI_COOKIE["at"] < 1800:
         return _BILI_COOKIE["value"]
     cookie = ""
@@ -227,6 +240,27 @@ async def _bili_cookie(session):
     _BILI_COOKIE["value"] = cookie
     _BILI_COOKIE["at"] = time.time()
     return cookie
+
+
+async def _bili_cookie(session, cfg=None):
+    """登录 Cookie 优先；缺少 buvid 时补一个匿名指纹，降低风控。"""
+    user = _user_bili_cookie(cfg)
+    if user:
+        if "buvid3=" in user:
+            return user
+        fp = await _bili_fingerprint(session)
+        return (user + "; " + fp) if fp else user
+    return await _bili_fingerprint(session)
+
+
+async def _bili_dash_tracks(session, param, cid, qn, cookie):
+    api = ("https://api.bilibili.com/x/player/playurl?%s&cid=%s&qn=%d"
+           "&fnval=4048&fnver=0&fourk=1&platform=pc" % (param, cid, qn))
+    play = await _get_json(session, api, H_BILI, cookie)
+    if not play or play.get("code") != 0:
+        return []
+    dash = (play.get("data") or {}).get("dash") or {}
+    return [x for x in (dash.get("video") or []) if isinstance(x, dict)]
 
 
 async def parse_bilibili(session, url, cfg):
@@ -248,10 +282,18 @@ async def parse_bilibili(session, url, cfg):
     else:
         return None
 
-    cookie = await _bili_cookie(session)
+    cookie = await _bili_cookie(session, cfg)
     view = await _get_json(session,
                            "https://api.bilibili.com/x/web-interface/view?" + param,
                            H_BILI, cookie)
+    expired = False
+    if view and view.get("code") in (-101, -2) and _user_bili_cookie(cfg):
+        # 登录态失效：退回匿名再试一次，不让整条解析失败
+        cookie = await _bili_fingerprint(session)
+        view = await _get_json(session,
+                               "https://api.bilibili.com/x/web-interface/view?" + param,
+                               H_BILI, cookie)
+        expired = True
     if not view or view.get("code") != 0:
         return None
     info = view.get("data") or {}
@@ -268,30 +310,48 @@ async def parse_bilibili(session, url, cfg):
 
     direct = ""
     note = ""
+    alt = ""
+    alt_label = ""
+    login = bili_logged_in(cfg)
+    fourk = 1 if login else 0
     if cid:
         api = ("https://api.bilibili.com/x/player/playurl?%s&cid=%s&qn=%d"
-               "&fnval=0&fnver=0&fourk=0" % (param, cid, qn))
+               "&fnval=0&fnver=0&fourk=%d&platform=pc" % (param, cid, qn, fourk))
         play = await _get_json(session, api, H_BILI, cookie)
+        cur_quality = 0
         if play and play.get("code") == 0:
             pdata = play.get("data") or {}
+            cur_quality = pdata.get("quality") or 0
             durl = pdata.get("durl") or []
             if durl:
                 direct = (durl[0] or {}).get("url") or ""
                 if len(durl) > 1:
                     note = "视频共 %d 段，这里是第 1 段" % len(durl)
+
+        tracks = []
+        # 登录后补一条高清视频轨：durl 最高只到 720P，1080P 只能走 DASH
+        if login and qn >= 80:
+            tracks = await _bili_dash_tracks(session, param, cid, qn, cookie)
+            if tracks and direct:
+                best = max(tracks, key=lambda x: (x.get("height") or 0, x.get("bandwidth") or 0))
+                best_id = best.get("id") or 0
+                if best_id > cur_quality:
+                    alt = best.get("baseUrl") or best.get("base_url") or ""
+                    alt_label = "%sP 视频轨（无音轨）" % (best.get("height") or best_id)
+
         if not direct:
             # 退回 DASH：只有视频轨，没有音轨
-            api = ("https://api.bilibili.com/x/player/playurl?%s&cid=%s&qn=%d"
-                   "&fnval=4048&fnver=0&fourk=1" % (param, cid, qn))
-            play = await _get_json(session, api, H_BILI, cookie)
-            if play and play.get("code") == 0:
-                dash = (play.get("data") or {}).get("dash") or {}
-                tracks = [x for x in (dash.get("video") or []) if isinstance(x, dict)]
-                if tracks:
-                    best = max(tracks, key=lambda x: (x.get("height") or 0, x.get("bandwidth") or 0))
-                    direct = best.get("baseUrl") or best.get("base_url") or ""
-                    if direct:
-                        note = "该清晰度为 DASH 视频轨（无音轨），完整播放建议用页面链接"
+            if not tracks:
+                tracks = await _bili_dash_tracks(session, param, cid, qn, cookie)
+            if tracks:
+                best = max(tracks, key=lambda x: (x.get("height") or 0, x.get("bandwidth") or 0))
+                direct = best.get("baseUrl") or best.get("base_url") or ""
+                if direct:
+                    note = "该清晰度为 DASH 视频轨（无音轨），完整播放建议用页面链接"
+
+    if expired:
+        tip = "B站登录已过期，本次按未登录解析"
+        note = (note + "；" + tip) if note else tip
 
     return {
         "platform": "B站",
@@ -300,6 +360,8 @@ async def parse_bilibili(session, url, cfg):
         "page": page,
         "cover": _https(info.get("pic") or ""),
         "note": note,
+        "alt": alt,
+        "alt_label": alt_label,
     }
 
 
@@ -504,6 +566,9 @@ def _format(item):
         lines.append(url)
     if page and page != url:
         lines.append(page)
+    alt = item.get("alt") or ""
+    if alt:
+        lines.append("%s：%s" % (item.get("alt_label") or "备用直链", alt))
     if item.get("note"):
         lines.append(item["note"])
     return "\n".join(lines)
@@ -614,6 +679,7 @@ async def cmd_status(ctx, args):
         "自动解析：%s" % ("开" if _truthy(ctx.cfg.get("auto_parse"), True) else "关"),
         "附带封面：%s" % ("开" if _truthy(ctx.cfg.get("with_cover"), True) else "关"),
         "B站清晰度：%s" % (ctx.cfg.get("bili_quality") or 64),
+        "B站登录：%s" % ("已登录" if bili_logged_in(ctx.cfg) else "未登录"),
         "用法：/解析 <链接>，或直接把分享链接发到群里",
     ]
     await ctx.reply("\n".join(lines))

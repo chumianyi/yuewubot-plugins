@@ -1,8 +1,8 @@
 {
   "name": "视频解析器",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": "YueWu",
-  "description": "发 B站 / 抖音 链接就自动解析，也可用 /解析 <链接>；只回复标题、直链与封面，不下载",
+  "description": "发 B站 / 抖音 链接就自动解析，也可用 /解析 <链接>；只回复标题、直链与封面，不下载。B站支持配置登录 Cookie",
   "homepage": "",
   "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/video_parser",
   "icon": "icon.png",
@@ -75,6 +75,11 @@
       "type": "number",
       "label": "B站清晰度（16=360P 32=480P 64=720P 80=1080P）",
       "default": 64
+    },
+    "bili_cookie": {
+      "type": "string",
+      "label": "B站 Cookie（可选，登录后可解析登录可见内容与更高清晰度）",
+      "default": ""
     },
     "douyin_cookie": {
       "type": "string",
