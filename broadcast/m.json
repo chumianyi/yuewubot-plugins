@@ -1,0 +1,46 @@
+{
+  "name": "广播",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "引用（回复）一条消息后发送 /广播，管理员一键转发到机器人加入的所有群",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/broadcast",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup"
+  },
+  "commands": [
+    {
+      "name": "广播",
+      "aliases": [
+        "群发",
+        "broadcast"
+      ],
+      "description": "引用一条消息并广播到所有群（管理员）",
+      "usage": "（先引用一条消息）/广播",
+      "handler": "cmd_broadcast"
+    }
+  ],
+  "config": {
+    "admin_qq": {
+      "type": "string",
+      "label": "额外管理员 QQ（可留空，默认使用控制台管理员列表）",
+      "default": ""
+    },
+    "interval": {
+      "type": "number",
+      "label": "每个群之间的间隔（秒）",
+      "default": 1.2
+    },
+    "skip_source": {
+      "type": "boolean",
+      "label": "跳过发起广播的群（原消息已在该群）",
+      "default": true
+    },
+    "max_groups": {
+      "type": "number",
+      "label": "单次最多广播群数（0 为不限）",
+      "default": 0
+    }
+  }
+}
