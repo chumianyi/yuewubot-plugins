@@ -1,0 +1,31 @@
+{
+  "name": "群欢迎",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "有人进群时自动 @ 新人并发送欢迎语，机器人自己入群不触发",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/group_welcome",
+  "icon": "icon.png",
+  "hooks": {
+    "on_notice": "on_notice"
+  },
+  "triggers": {},
+  "commands": [],
+  "config": {
+    "owner": {
+      "type": "string",
+      "label": "主人 QQ",
+      "default": "3835347820"
+    },
+    "welcome": {
+      "type": "string",
+      "label": "欢迎语（{owner} 会替换为主人 QQ）",
+      "default": "，你好呀，我是小鸟游星野，我的主人是{owner}"
+    },
+    "at_user": {
+      "type": "string",
+      "label": "是否 @ 新人（true/false）",
+      "default": "true"
+    }
+  }
+}

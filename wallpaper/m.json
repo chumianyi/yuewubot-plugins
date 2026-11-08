@@ -1,0 +1,28 @@
+{
+  "name": "wallpaper",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "随机来一张图，支持自定义尺寸，可直接发到群聊",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/wallpaper",
+  "icon": "icon.png",
+  "hooks": {},
+  "commands": [
+    {
+      "name": "来张图",
+      "aliases": [
+        "pic",
+        "img"
+      ],
+      "description": "随机发送一张图片",
+      "usage": "/来张图 800 600",
+      "handler": "cmd_pic"
+    }
+  ],
+  "config": {
+    "width": {
+      "type": "number",
+      "label": "默认宽度",
+      "default": 800
+    }
+  }
+}

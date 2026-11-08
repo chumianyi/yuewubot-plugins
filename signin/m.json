@@ -1,0 +1,30 @@
+{
+  "name": "signin",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "每日签到，记录连续签到天数，数据落盘不丢",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/signin",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup"
+  },
+  "commands": [
+    {
+      "name": "签到",
+      "aliases": [
+        "signin",
+        "qd"
+      ],
+      "description": "每日签到",
+      "usage": "/签到",
+      "handler": "cmd_signin"
+    }
+  ],
+  "config": {
+    "bonus": {
+      "type": "number",
+      "label": "每日奖励积分",
+      "default": 10
+    }
+  }
+}

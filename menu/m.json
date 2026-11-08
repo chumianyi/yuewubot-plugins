@@ -1,0 +1,43 @@
+{
+  "name": "功能菜单",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "发送「菜单」即可查看全部功能，群聊免 @ 触发",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/menu",
+  "icon": "icon.png",
+  "hooks": {
+    "on_message": "on_message"
+  },
+  "triggers": {
+    "on_message": [
+      "菜单",
+      "功能列表",
+      "菜单列表"
+    ]
+  },
+  "commands": [
+    {
+      "name": "功能",
+      "aliases": [
+        "menu",
+        "cd"
+      ],
+      "description": "查看功能菜单",
+      "usage": "/功能",
+      "handler": "cmd_menu"
+    }
+  ],
+  "config": {
+    "title": {
+      "type": "string",
+      "label": "菜单标题",
+      "default": "YueWuBot 功能菜单"
+    },
+    "tip": {
+      "type": "string",
+      "label": "底部提示",
+      "default": "发 /帮助 查看全部指令"
+    }
+  }
+}

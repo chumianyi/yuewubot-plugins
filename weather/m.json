@@ -1,0 +1,31 @@
+{
+  "name": "weather",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "查询指定城市的实时天气，数据来自 wttr.in",
+  "homepage": "https://wttr.in",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/weather",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup"
+  },
+  "commands": [
+    {
+      "name": "天气",
+      "aliases": [
+        "weather",
+        "tq"
+      ],
+      "description": "查询城市天气",
+      "usage": "/天气 北京",
+      "handler": "cmd_weather"
+    }
+  ],
+  "config": {
+    "default_city": {
+      "type": "string",
+      "label": "默认城市",
+      "default": "北京"
+    }
+  }
+}

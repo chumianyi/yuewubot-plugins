@@ -1,0 +1,62 @@
+{
+  "name": "黑名单",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "名单内的 QQ 无法与机器人聊天或调用任何功能，主人永远不受限制",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/blacklist",
+  "icon": "icon.png",
+  "hooks": {
+    "on_filter": "on_filter"
+  },
+  "triggers": {},
+  "commands": [
+    {
+      "name": "拉黑",
+      "aliases": [
+        "ban",
+        "black"
+      ],
+      "description": "把 QQ 加入黑名单",
+      "usage": "/拉黑 123456",
+      "handler": "cmd_add"
+    },
+    {
+      "name": "解封",
+      "aliases": [
+        "unban",
+        "white"
+      ],
+      "description": "把 QQ 移出黑名单",
+      "usage": "/解封 123456",
+      "handler": "cmd_del"
+    },
+    {
+      "name": "黑名单",
+      "aliases": [
+        "blacklist",
+        "hmd"
+      ],
+      "description": "查看黑名单",
+      "usage": "/黑名单",
+      "handler": "cmd_list"
+    }
+  ],
+  "config": {
+    "owner": {
+      "type": "string",
+      "label": "主人 QQ",
+      "default": "3835347820"
+    },
+    "extra": {
+      "type": "string",
+      "label": "固定黑名单 QQ（逗号分隔）",
+      "default": ""
+    },
+    "notify": {
+      "type": "string",
+      "label": "被拦截时是否提示（true/false）",
+      "default": "false"
+    }
+  }
+}

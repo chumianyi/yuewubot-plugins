@@ -1,0 +1,58 @@
+{
+  "name": "入群与好友审批",
+  "version": "1.0.0",
+  "author": "YueWu",
+  "description": "好友申请与入群邀请先私聊主人，/同意 QQ号或群号 才放行，/拒绝 默认拒绝全部待审批请求",
+  "homepage": "",
+  "repository": "https://github.com/chumianyi/yuewubot-plugins/tree/main/request_approve",
+  "icon": "icon.png",
+  "hooks": {
+    "on_startup": "on_startup",
+    "on_request": "on_request"
+  },
+  "triggers": {},
+  "commands": [
+    {
+      "name": "同意",
+      "aliases": [
+        "agree",
+        "ok"
+      ],
+      "description": "同意指定 QQ 号或群号的请求",
+      "usage": "/同意 123456",
+      "handler": "cmd_agree"
+    },
+    {
+      "name": "拒绝",
+      "aliases": [
+        "refuse",
+        "no"
+      ],
+      "description": "不带参数则拒绝全部待审批请求",
+      "usage": "/拒绝 [号码]",
+      "handler": "cmd_refuse"
+    },
+    {
+      "name": "待审批",
+      "aliases": [
+        "pending",
+        "sq"
+      ],
+      "description": "查看当前待审批的请求",
+      "usage": "/待审批",
+      "handler": "cmd_pending"
+    }
+  ],
+  "config": {
+    "owner": {
+      "type": "string",
+      "label": "主人 QQ",
+      "default": "3835347820"
+    },
+    "expire_hours": {
+      "type": "number",
+      "label": "请求有效期（小时）",
+      "default": 48
+    }
+  }
+}
